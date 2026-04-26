@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, AlertTriangle, CheckCircle, MapPin, User, Phone, FileText, Zap, Package, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useCart } from '../../context/CartContext';
+import emailjs from "@emailjs/browser";
 
 const emergencyMedicines = [
   { id: 'paracetamol-500', name: 'Paracetamol 500mg', brand: 'Calpol', price: 12, priceDisplay: '₹12', type: 'Tablet', purpose: 'Fever & Pain Relief' },
@@ -49,14 +50,67 @@ export default function PreBookingPage() {
     setSelectedMeds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     // Add selected meds to cart
     selectedMeds.forEach(id => {
       const med = emergencyMedicines.find(m => m.id === id);
       if (med) addToCart({ id: med.id, name: med.name, brand: med.brand, price: med.price, priceDisplay: med.priceDisplay, type: med.type });
     });
+    await sendEmails();
     setStep(3);
   };
+
+
+
+
+
+  const generateItemsHTML = () => {
+  return selectedMeds.map(id => {
+    const med = emergencyMedicines.find(m => m.id === id);
+    if (!med) return '';
+    return `
+      <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee;">
+        <span>${med.name}</span>
+        <span>₹${med.price}</span>
+      </div>
+    `;
+  }).join('');
+};
+
+const sendEmails = async () => {
+  try {
+    const templateParams = {
+      user_name: form.patientName,
+      user_email: form.patientEmail,
+      order_id: `EM-${Date.now()}`,
+      total: selectedMeds.length,
+      items_html: generateItemsHTML(),
+    };
+
+    await emailjs.send(
+      "service_yb3clca",
+      "template_q1zcqaq",
+      templateParams,
+      "-xTNLGloxlRg2ibDS"
+    );
+
+    await emailjs.send(
+      "service_yb3clca",
+      "template_9h1ixfv",
+      templateParams,
+      "-xTNLGloxlRg2ibDS"
+    );
+
+    console.log("Emails sent successfully");
+  } catch (error) {
+    console.error("Email error:", error);
+  }
+};
+
+
+
+
+
 
   const inputClass = `w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 transition ${isDark ? 'glass border border-white/10 text-white placeholder-slate-500 focus:ring-blue-500/40' : 'bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500/30'}`;
 
@@ -228,6 +282,23 @@ export default function PreBookingPage() {
                   <label className={`block text-xs font-bold mb-2 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Phone</label>
                   <input value={form.patientPhone} onChange={e => setForm({ ...form, patientPhone: e.target.value })} placeholder="+91 XXXXX XXXXX" className={inputClass} />
                 </div>
+
+
+<div>
+  <label className={`block text-xs font-bold mb-2 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+    Email
+  </label>
+  <input
+    value={form.patientEmail}
+    onChange={e => setForm({ ...form, patientEmail: e.target.value })}
+    placeholder="Enter email"
+    className={inputClass}
+    type="email"
+  />
+</div>
+
+
+
                 <div className="sm:col-span-2">
                   <label className={`block text-xs font-bold mb-2 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Delivery Address</label>
                   <textarea value={form.patientAddress} onChange={e => setForm({ ...form, patientAddress: e.target.value })} placeholder="Full address for delivery" className={inputClass} rows={2} />
